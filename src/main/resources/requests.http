@@ -1,0 +1,27 @@
+###GET
+GET http://localhost:8100/api/products
+Content-Type: application/json
+
+{}
+
+###POST
+POST http://localhost:8100/api/products
+Content-Type: application/json
+
+{
+    "name": "Product 3",
+    "price": 33.3
+}
+
+###PUT
+PUT http://localhost:8100/api/products/1
+Content-Type: application/json
+
+{
+    "name": "Product 1",
+    "price": 10.0
+}
+
+###DELETE
+DELETE http://localhost:8100/api/products/1
+Content-Type: application/json
