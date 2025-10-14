@@ -36,5 +36,5 @@ Content-Type: application/json
 }
 
 ###DELETE
-DELETE http://localhost:8100/api/products/2
+DELETE http://localhost:8100/api/products/1
 Content-Type: application/json
