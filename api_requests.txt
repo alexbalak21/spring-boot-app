@@ -1,0 +1,42 @@
+# User API Test Requests
+# Base URL: http://localhost:8080/api/users
+
+# 1. Create a new user
+curl -X POST http://localhost:8080/api/users \
+     -H "Content-Type: application/json" \
+     -d '{"name":"John Doe"}'
+
+# 2. Get all users
+curl http://localhost:8080/api/users
+
+# 3. Get a specific user (replace {id} with actual user ID)
+curl http://localhost:8080/api/users/1
+
+# 4. Update a user (replace {id} with actual user ID)
+curl -X PUT http://localhost:8080/api/users/1 \
+     -H "Content-Type: application/json" \
+     -d '{"name":"John Updated"}'
+
+# 5. Delete a user (replace {id} with actual user ID)
+curl -X DELETE http://localhost:8080/api/users/1
+
+# 6. Get a non-existent user (should return 404)
+curl -v http://localhost:8080/api/users/999
+
+# 7. Update a non-existent user (should return 404)
+curl -X PUT http://localhost:8080/api/users/999 \
+     -H "Content-Type: application/json" \
+     -d '{"name":"Non-existent"}'
+
+# 8. Delete a non-existent user (should return 404)
+curl -X DELETE http://localhost:8080/api/users/999
+
+# 9. Create a user with empty name (if validation is added)
+curl -X POST http://localhost:8080/api/users \
+     -H "Content-Type: application/json" \
+     -d '{"name":""}'
+
+# 10. Send invalid JSON (should return 400 Bad Request)
+curl -X POST http://localhost:8080/api/users \
+     -H "Content-Type: application/json" \
+     -d '{"name":}'
