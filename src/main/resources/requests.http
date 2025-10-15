@@ -17,21 +17,6 @@ Content-Type: application/json
     "price": 10.1
 }
 
-###GET ALL PRODUCTS SERVER
-GET http://springboot.alwaysdata.net/api/products
-Content-Type: application/json
-
-{}
-
-###POST
-POST http://springboot.alwaysdata.net/api/products
-Content-Type: application/json
-
-{
-    "name": "Product 1",
-    "price": 10.1
-}
-
 ###POST
 POST http://localhost:8100/api/products
 Content-Type: application/json
@@ -53,3 +38,20 @@ Content-Type: application/json
 ###DELETE
 DELETE http://localhost:8100/api/products/1
 Content-Type: application/json
+
+
+
+###GET ALL PRODUCTS SERVER
+GET http://springboot.alwaysdata.net/api/products
+Content-Type: application/json
+
+{}
+
+###POST
+POST http://springboot.alwaysdata.net/api/products
+Content-Type: application/json
+
+{
+    "name": "Product 1",
+    "price": 10.1
+}

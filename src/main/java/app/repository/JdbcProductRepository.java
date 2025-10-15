@@ -25,6 +25,10 @@ public class JdbcProductRepository implements ProductRepository {
         product.setId(rs.getLong("id"));
         product.setName(rs.getString("name"));
         product.setPrice(rs.getDouble("price"));
+        product.setCreatedAt(rs.getTimestamp("created_at") != null ? 
+                           rs.getTimestamp("created_at").toLocalDateTime() : null);
+        product.setUpdatedAt(rs.getTimestamp("updated_at") != null ? 
+                           rs.getTimestamp("updated_at").toLocalDateTime() : null);
         return product;
     };
 
@@ -43,7 +47,7 @@ public class JdbcProductRepository implements ProductRepository {
 
     @Override
     public Product save(Product product) {
-        String sql = "INSERT INTO products (name, price) VALUES (?, ?)";
+        String sql = "INSERT INTO products (name, price, created_at, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
         var keyHolder = new GeneratedKeyHolder();
         
         jdbcTemplate.update(connection -> {
@@ -54,14 +58,21 @@ public class JdbcProductRepository implements ProductRepository {
         }, keyHolder);
         
         long id = keyHolder.getKey() != null ? keyHolder.getKey().longValue() : -1;
-        product.setId(id);
-        return product;
+        return findById(id).orElse(product);
     }
 
     @Override
     public int update(Product product) {
-        String sql = "UPDATE products SET name = ?, price = ? WHERE id = ?";
-        return jdbcTemplate.update(sql, product.getName(), product.getPrice(), product.getId());
+        String sql = "UPDATE products SET name = ?, price = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?";
+        int updated = jdbcTemplate.update(sql, product.getName(), product.getPrice(), product.getId());
+        if (updated > 0) {
+            // Refresh the product to get the updated timestamps
+            findById(product.getId()).ifPresent(p -> {
+                product.setCreatedAt(p.getCreatedAt());
+                product.setUpdatedAt(p.getUpdatedAt());
+            });
+        }
+        return updated;
     }
 
     @Override

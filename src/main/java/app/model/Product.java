@@ -6,14 +6,18 @@ public class Product {
     private Long id;
     private String name;
     private Double price;
+    private java.time.LocalDateTime createdAt;
+    private java.time.LocalDateTime updatedAt;
 
     public Product() {
     }
 
-    public Product(Long id, String name, Double price) {
+    public Product(Long id, String name, Double price, java.time.LocalDateTime createdAt, java.time.LocalDateTime updatedAt) {
         this.id = id;
         this.name = name;
         this.price = price;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     public Long getId() {
@@ -40,6 +44,22 @@ public class Product {
         this.price = price;
     }
 
+    public java.time.LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(java.time.LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public java.time.LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(java.time.LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -47,12 +67,14 @@ public class Product {
         Product product = (Product) o;
         return Objects.equals(id, product.id) &&
                Objects.equals(name, product.name) &&
-               Objects.equals(price, product.price);
+               Objects.equals(price, product.price) &&
+               Objects.equals(createdAt, product.createdAt) &&
+               Objects.equals(updatedAt, product.updatedAt);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, name, price);
+        return Objects.hash(id, name, price, createdAt, updatedAt);
     }
 
     @Override
