@@ -1,0 +1,11 @@
+#GET ALL USERS
+GET http://localhost:8080/api/users
+Content-Type: application/json
+
+###POST USER
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+    "name": "John Doe"
+}
