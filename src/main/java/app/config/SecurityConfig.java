@@ -5,36 +5,59 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-@Configuration // Marks this class as a configuration source for Spring
+import java.util.Arrays;
+import java.util.Collections;
+
+@Configuration
 public class SecurityConfig {
 
-    // 🔐 Defines the security filter chain for handling HTTP security
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-            // 🛡️ Enables CSRF protection and stores the token in a cookie
-            // ⚠️ withHttpOnlyFalse() allows frontend JavaScript to read the token from document.cookie
-            .csrf(csrf -> csrf
-                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-            );
-        // ✅ Builds and returns the configured security filter chain
-        return http.build();
-    }
+   @Bean
+public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    // Configure CSRF with cookie storage
+    CookieCsrfTokenRepository tokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+    tokenRepository.setCookiePath("/");
+    
+    http
+        // Enable CORS
+        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+        
+        // Configure CSRF
+        .csrf(csrf -> csrf
+            .csrfTokenRepository(tokenRepository)
+            .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+            .ignoringRequestMatchers("/api/csrf")
+        )
+        
+        // Configure authorization
+        .authorizeHttpRequests(auth -> auth
+            .requestMatchers(
+                "/", "/index.html", "/static/**", "/assets/**", 
+                "/*.js", "/*.css", "/*.ico", "/*.json", "/*.png", "/favicon.ico"
+            ).permitAll()
+            .requestMatchers("/api/**").permitAll()
+            .anyRequest().authenticated()
+        );
+    
+    return http.build();
+}
 
-    // 🌍 Configures CORS rules for Spring MVC controllers
-    @Bean
-    public WebMvcConfigurer corsConfigurer() {
-        return new WebMvcConfigurer() {
-            @Override
-            public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api/**") // Applies CORS rules to /api/** endpoints
-                        .allowedOrigins("http://localhost:8100") // Allows requests from this origin (your frontend)
-                        .allowedMethods("GET", "POST") // Permits only GET and POST methods
-                        .allowCredentials(true); // Allows cookies and credentials to be sent with requests
-            }
-        };
-    }
+@Bean
+public CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration configuration = new CorsConfiguration();
+    configuration.setAllowedOrigins(Collections.singletonList("http://localhost:8100"));
+    configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+    configuration.setAllowedHeaders(Arrays.asList("X-XSRF-TOKEN", "Content-Type", "Authorization"));
+    configuration.setExposedHeaders(Arrays.asList("X-XSRF-TOKEN"));
+    configuration.setAllowCredentials(true);
+    configuration.setMaxAge(3600L);
+    
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", configuration);
+    return source;
+}
 }

@@ -1,76 +1,101 @@
-import axios from "axios"
-import {useState} from "react"
-import getCookie from "./getCookie"
+import axios from "axios";
+import { useState, useEffect } from "react";
 
-const URL = "/api"
+const URL = "/api";
+
+// Configure axios defaults
+axios.defaults.withCredentials = true;
+axios.defaults.withXSRFToken = true;
+
+// Add a request interceptor
+axios.interceptors.request.use(
+  (config) => {
+    const token = getCookie("XSRF-TOKEN");
+    if (token && !["get", "head", "options"].includes(config.method?.toLowerCase() || "")) {
+      config.headers["X-XSRF-TOKEN"] = token;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Helper function to get cookie by name
+function getCookie(name: string): string | null {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+}
 
 export default function App() {
-  const [responseMessage, setResponseMessage] = useState("")
-  const [inputValue, setInputValue] = useState("")
+  const [responseMessage, setResponseMessage] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  function handleGet() {
-    console.log("handleGet triggered")
-    axios
-      .get(URL)
-      .then((response) => {
-        console.log("GET response:", response)
-        setResponseMessage(response.data.message)
-      })
-      .catch((error) => {
-        console.error("GET request failed:", error)
-        if (error.response) {
-          console.error("Response data:", error.response.data)
-          console.error("Response status:", error.response.status)
-          console.error("Response headers:", error.response.headers)
-        } else if (error.request) {
-          console.error("No response received:", error.request)
-        } else {
-          console.error("Error message:", error.message)
-        }
-      })
-  }
+  // Fetch CSRF token when component mounts
+  useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        await axios.get('/api/csrf', { withCredentials: true });
+        console.log('CSRF token fetched successfully');
+      } catch (error) {
+        console.error('Error fetching CSRF token:', error);
+      }
+    };
+    fetchCsrfToken();
+  }, []);
 
-  function handlePost() {
-    const xsrfToken = getCookie("XSRF-TOKEN")
+  const handlePost = async () => {
+    if (!inputValue.trim()) {
+      setResponseMessage("Please enter a message");
+      return;
+    }
 
-    axios
-      .post(
-        URL,
-        {message: inputValue},
-        {
-          headers: {
-            "X-XSRF-TOKEN": xsrfToken ?? "",
-          },
-          withCredentials: true,
-        }
-      )
-      .then((response) => {
-        setResponseMessage(response.data.message)
-      })
-      .catch((error) => {
-        console.error("POST request failed:", error)
-        if (error.response) {
-          console.error("Response data:", error.response.data)
-          console.error("Response status:", error.response.status)
-        } else if (error.request) {
-          console.error("No response received:", error.request)
-        } else {
-          console.error("Error message:", error.message)
-        }
-        setResponseMessage("Error: Could not send message.")
-      })
-  }
+    setIsLoading(true);
+    try {
+      const response = await axios.post(URL, { message: inputValue });
+      setResponseMessage(JSON.stringify(response.data, null, 2));
+      setInputValue("");
+    } catch (error: any) {
+      console.error("POST error:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        headers: error.response?.headers,
+        cookies: document.cookie
+      });
+      setResponseMessage(`Error: ${error.response?.data?.message || error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <main>
-      <h1>React App</h1>
-      <h2>Get</h2>
-      <button onClick={handleGet}>Get</button>
-      <h2>Post</h2>
-      <input type="text" value={inputValue} onChange={(e) => setInputValue(e.target.value)} />
-      <br />
-      <button onClick={handlePost}>Post</button>
-      <h2>Response Message</h2>
-      <p>{responseMessage}</p>
-    </main>
-  )
+    <div style={{ padding: '20px' }}>
+      <h1>React + Spring Boot with CSRF</h1>
+      <div>
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          placeholder="Type a message"
+        />
+        <button onClick={handlePost} disabled={isLoading}>
+          {isLoading ? 'Sending...' : 'Send'}
+        </button>
+      </div>
+      <div>
+        <h3>Response:</h3>
+        <pre style={{ whiteSpace: 'pre-wrap' }}>
+          {responseMessage || 'No response yet'}
+        </pre>
+      </div>
+      <div>
+        <h4>Current Cookies:</h4>
+        <pre>{document.cookie || 'No cookies found'}</pre>
+      </div>
+    </div>
+  );
 }
