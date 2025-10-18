@@ -14,7 +14,10 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import jakarta.servlet.http.Cookie;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 import jakarta.servlet.FilterChain;
@@ -28,8 +31,8 @@ import java.util.Collections;
 @Configuration
 public class SecurityConfig {
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+@Bean
+public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
     // CSRF token repo with cookie readable by JS (for SPA)
     CookieCsrfTokenRepository tokenRepository = new CookieCsrfTokenRepository();
     tokenRepository.setCookieCustomizer(cookie -> cookie
@@ -58,13 +61,82 @@ public class SecurityConfig {
             .ignoringRequestMatchers(csrfIgnore)
         )
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/", "/static/**").permitAll()
+            .requestMatchers(
+                "/",
+                "/index.html",
+                "/static/**",
+                "/assets/**",
+                "/*.js",
+                "/*.css",
+                "/*.json",
+                "/*.png",
+                "/*.jpg",
+                "/*.jpeg",
+                "/*.gif",
+                "/*.svg",
+                "/*.ico",
+                "/favicon.ico",
+                "/error"
+            ).permitAll()
             .requestMatchers("/api/**").permitAll()
             .anyRequest().authenticated()
         )
         .addFilterBefore(originCheckFilter(), CsrfFilter.class);
 
     return http.build();
+}
+    
+  
+// Replace originCheckFilter() with this logging version (or add a second bean)
+@Bean
+public OncePerRequestFilter originCheckFilterWithLogging() {
+    Logger log = LoggerFactory.getLogger("OriginCheckFilter");
+    return new OncePerRequestFilter() {
+        @Override
+        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+                throws ServletException, IOException {
+            String method = request.getMethod();
+            String uri = request.getRequestURI();
+            String origin = request.getHeader("Origin");
+            String referer = request.getHeader("Referer");
+            String cookieHeader = request.getHeader("Cookie");
+
+            log.debug("Incoming request: method={} uri={} origin={} referer={} cookies={}",
+                    method, uri, origin, referer, cookieHeader);
+
+            if (request.getCookies() != null) {
+                for (Cookie c : request.getCookies()) {
+                    log.debug("Cookie present: name={} value={}", c.getName(), c.getValue());
+                }
+            } else {
+                log.debug("No cookies present on request");
+            }
+
+            
+            // Log CSRF attribute if present
+            Object csrfAttr = request.getAttribute("_csrf");
+            if (csrfAttr != null) {
+                log.debug("_csrf attribute present: {}", csrfAttr);
+            } else {
+                log.debug("_csrf attribute not present");
+            }
+
+            if (method.matches("POST|PUT|DELETE")) {
+                boolean originInvalid = origin != null && !origin.equals("http://localhost:8100");
+                boolean refererInvalid = referer != null && !referer.startsWith("http://localhost:8100");
+
+                if (originInvalid || refererInvalid) {
+                    log.warn("Rejecting request due to origin/referer check: origin={} referer={}", origin, referer);
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid origin");
+                    return;
+                } else {
+                    log.debug("Origin/referer check passed (or headers missing but allowed).");
+                }
+            }
+
+            filterChain.doFilter(request, response);
+        }
+    };
 }
 
 

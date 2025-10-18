@@ -1,100 +1,78 @@
+import { useEffect, useState } from "react";
 import axios from "axios";
-import { useState, useEffect } from "react";
 
-const URL = "/api";
-
-// Configure axios defaults
+// Axios defaults for XSRF and cookies
 axios.defaults.withCredentials = true;
-axios.defaults.withXSRFToken = true;
+axios.defaults.xsrfCookieName = "XSRF-TOKEN";
+axios.defaults.xsrfHeaderName = "X-XSRF-TOKEN";
 
-// Add a request interceptor
-axios.interceptors.request.use(
-  (config) => {
-    const token = getCookie("XSRF-TOKEN");
-    if (token && !["get", "head", "options"].includes(config.method?.toLowerCase() || "")) {
-      config.headers["X-XSRF-TOKEN"] = token;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Helper function to get cookie by name
-function getCookie(name: string): string | null {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-  return null;
-}
+const API_BASE = "/api";
 
 export default function App() {
-  const [responseMessage, setResponseMessage] = useState("");
-  const [inputValue, setInputValue] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [input, setInput] = useState("");
+  const [responseText, setResponseText] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Fetch CSRF token when component mounts
+  // Fetch CSRF token once on mount (backend should set XSRF-TOKEN cookie)
   useEffect(() => {
-    const fetchCsrfToken = async () => {
-      try {
-        await axios.get('/api/csrf', { withCredentials: true });
-        console.log('CSRF token fetched successfully');
-      } catch (error) {
-        console.error('Error fetching CSRF token:', error);
-      }
-    };
-    fetchCsrfToken();
+    axios
+      .get(`${API_BASE}/csrf`)
+      .then(() => {
+        // cookie should be set by server; axios will use it automatically
+      })
+      .catch((err) => {
+        console.error("Failed to fetch CSRF token", err);
+      });
   }, []);
 
   const handlePost = async () => {
-    if (!inputValue.trim()) {
-      setResponseMessage("Please enter a message");
+    if (!input.trim()) {
+      setResponseText("Enter a message before sending");
       return;
     }
 
-    setIsLoading(true);
+    setLoading(true);
+    setResponseText(null);
     try {
-      const response = await axios.post(URL, { message: inputValue });
-      setResponseMessage(JSON.stringify(response.data, null, 2));
-      setInputValue("");
-    } catch (error: any) {
-      console.error("POST error:", {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        headers: error.response?.headers,
-        cookies: document.cookie
-      });
-      setResponseMessage(`Error: ${error.response?.data?.message || error.message}`);
+      const res = await axios.post(API_BASE, { message: input });
+      setResponseText(JSON.stringify(res.data, null, 2));
+      setInput("");
+    } catch (err: any) {
+      console.error("POST error", err);
+      const serverMessage = err?.response?.data?.message || err.message || "Unknown error";
+      setResponseText(`Error: ${serverMessage}`);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h1>React + Spring Boot with CSRF</h1>
-      <div>
+    <div style={{ padding: 20, fontFamily: "Arial, sans-serif", maxWidth: 800 }}>
+      <h1>Minimal React + Spring CSRF demo</h1>
+
+      <div style={{ marginBottom: 12 }}>
         <input
           type="text"
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
           placeholder="Type a message"
+          style={{ padding: 8, width: "70%", marginRight: 8 }}
         />
-        <button onClick={handlePost} disabled={isLoading}>
-          {isLoading ? 'Sending...' : 'Send'}
+        <button onClick={handlePost} disabled={loading} style={{ padding: "8px 12px" }}>
+          {loading ? "Sending..." : "Send"}
         </button>
       </div>
-      <div>
-        <h3>Response:</h3>
-        <pre style={{ whiteSpace: 'pre-wrap' }}>
-          {responseMessage || 'No response yet'}
+
+      <div style={{ marginBottom: 12 }}>
+        <strong>Response:</strong>
+        <pre style={{ background: "#f6f6f6", padding: 12, whiteSpace: "pre-wrap" }}>
+          {responseText ?? "No response yet"}
         </pre>
       </div>
+
       <div>
-        <h4>Current Cookies:</h4>
-        <pre>{document.cookie || 'No cookies found'}</pre>
+        <strong>Current cookies:</strong>
+        <pre style={{ background: "#f6f6f6", padding: 12 }}>{document.cookie || "No cookies"}</pre>
       </div>
     </div>
   );

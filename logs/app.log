@@ -1,0 +1,29 @@
+2025-10-18 13:57:12.599 INFO  app.Application [restartedMain] - Starting Application using Java 25 with PID 18408 (F:\DEV\spring-boot-app\target\classes started by ALEX in F:\DEV\spring-boot-app)
+2025-10-18 13:57:12.604 INFO  app.Application [restartedMain] - No active profile set, falling back to 1 default profile: "default"
+2025-10-18 13:57:13.382 INFO  o.s.b.w.e.tomcat.TomcatWebServer [restartedMain] - Tomcat initialized with port 8100 (http)
+2025-10-18 13:57:13.386 INFO  o.a.catalina.core.StandardService [restartedMain] - Starting service [Tomcat]
+2025-10-18 13:57:13.395 INFO  o.a.catalina.core.StandardEngine [restartedMain] - Starting Servlet engine: [Apache Tomcat/10.1.46]
+2025-10-18 13:57:13.454 INFO  o.a.c.c.C.[Tomcat].[localhost].[/] [restartedMain] - Initializing Spring embedded WebApplicationContext
+2025-10-18 13:57:13.458 INFO  o.s.b.w.s.c.ServletWebServerApplicationContext [restartedMain] - Root WebApplicationContext: initialization completed in 841 ms
+2025-10-18 13:57:13.488 DEBUG app.config.SecurityConfig$1 [restartedMain] - Filter 'originCheckFilterWithLogging' configured for use
+2025-10-18 13:57:13.490 DEBUG app.config.SecurityConfig$2 [restartedMain] - Filter 'originCheckFilter' configured for use
+2025-10-18 13:57:13.550 WARN  o.s.b.a.s.s.UserDetailsServiceAutoConfiguration [restartedMain] - 
+
+Using generated security password: d0ccbb70-3b42-446d-8ea2-31866afb4432
+
+This generated password is for development use only. Your security configuration must be updated before running your application in production.
+
+2025-10-18 13:57:13.561 INFO  o.s.s.c.a.a.c.InitializeUserDetailsBeanManagerConfigurer$InitializeUserDetailsManagerConfigurer [restartedMain] - Global AuthenticationManager configured with UserDetailsService bean with name inMemoryUserDetailsManager
+2025-10-18 13:57:13.643 INFO  o.s.b.a.w.s.WelcomePageHandlerMapping [restartedMain] - Adding welcome page: class path resource [static/index.html]
+2025-10-18 13:57:13.679 DEBUG o.s.w.s.m.m.a.RequestMappingHandlerMapping [restartedMain] - 6 mappings in 'requestMappingHandlerMapping'
+2025-10-18 13:57:13.741 DEBUG o.s.w.s.h.SimpleUrlHandlerMapping [restartedMain] - Patterns [/webjars/**, /**] in 'resourceHandlerMapping'
+2025-10-18 13:57:13.796 DEBUG o.s.s.web.DefaultSecurityFilterChain [restartedMain] - Will secure any request with filters: DisableEncodeUrlFilter, WebAsyncManagerIntegrationFilter, SecurityContextHolderFilter, HeaderWriterFilter, CorsFilter, , CsrfFilter, LogoutFilter, RequestCacheAwareFilter, SecurityContextHolderAwareRequestFilter, AnonymousAuthenticationFilter, ExceptionTranslationFilter, AuthorizationFilter
+2025-10-18 13:57:13.846 DEBUG o.s.w.s.m.m.a.RequestMappingHandlerAdapter [restartedMain] - ControllerAdvice beans: 0 @ModelAttribute, 0 @InitBinder, 1 RequestBodyAdvice, 1 ResponseBodyAdvice
+2025-10-18 13:57:13.876 DEBUG o.s.w.s.m.m.a.ExceptionHandlerExceptionResolver [restartedMain] - ControllerAdvice beans: 0 @ExceptionHandler, 1 ResponseBodyAdvice
+2025-10-18 13:57:13.964 INFO  o.s.b.d.a.OptionalLiveReloadServer [restartedMain] - LiveReload server is running on port 35729
+2025-10-18 13:57:13.984 INFO  o.s.b.w.e.tomcat.TomcatWebServer [restartedMain] - Tomcat started on port 8100 (http) with context path '/'
+2025-10-18 13:57:13.994 INFO  app.Application [restartedMain] - Started Application in 1.507 seconds (process running for 361.789)
+2025-10-18 13:57:13.998 INFO  o.s.b.d.a.ConditionEvaluationDeltaLoggingListener [restartedMain] - Condition evaluation unchanged
+2025-10-18 13:57:37.754 INFO  o.s.b.d.a.LocalDevToolsAutoConfiguration$RestartingClassPathChangeChangedEventListener [File Watcher] - Restarting due to 1 class path change (0 additions, 0 deletions, 1 modification)
+2025-10-18 13:57:37.756 INFO  o.s.b.w.e.tomcat.GracefulShutdown [Thread-11] - Commencing graceful shutdown. Waiting for active requests to complete
+2025-10-18 13:57:37.765 INFO  o.s.b.w.e.tomcat.GracefulShutdown [tomcat-shutdown] - Graceful shutdown complete
