@@ -33,9 +33,6 @@ public class SecurityConfig {
 
 @Bean
 public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    Logger log = LoggerFactory.getLogger(SecurityConfig.class);
-    log.info("Configuring SecurityFilterChain");
-
     // CSRF token repo with cookie readable by JS (for SPA)
     CookieCsrfTokenRepository tokenRepository = new CookieCsrfTokenRepository();
     tokenRepository.setCookieCustomizer(cookie -> cookie
@@ -48,14 +45,12 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
     CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
     requestHandler.setCsrfRequestAttributeName("_csrf");
 
-    // CSRF ignore matcher with logging
     RequestMatcher csrfIgnore = request -> {
-        String method = request.getMethod();
-        String uri = request.getRequestURI();
-        log.debug("CSRF ignore check: method={} uri={}", method, uri);
-        boolean matched = "POST".equalsIgnoreCase(method) && "/api/csrf".equals(uri);
-        log.debug("CSRF ignore matcher result: matched={}", matched);
-        return matched;
+        if (!"POST".equalsIgnoreCase(request.getMethod())) {
+            return false;
+        }
+        String uri = request.getRequestURI(); // includes context path trimmed by container
+        return "/api/csrf".equals(uri);
     };
 
     http
@@ -86,13 +81,13 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
             .requestMatchers("/api/**").permitAll()
             .anyRequest().authenticated()
         )
-        .addFilterBefore(originCheckFilterWithLogging(), CsrfFilter.class)
-        .addFilterAfter(csrfPostCheckLogger(), CsrfFilter.class);
+        .addFilterBefore(originCheckFilter(), CsrfFilter.class);
 
-    log.info("SecurityFilterChain configured");
     return http.build();
 }
-
+    
+  
+// Replace originCheckFilter() with this logging version (or add a second bean)
 @Bean
 public OncePerRequestFilter originCheckFilterWithLogging() {
     Logger log = LoggerFactory.getLogger("OriginCheckFilter");
@@ -106,23 +101,24 @@ public OncePerRequestFilter originCheckFilterWithLogging() {
             String referer = request.getHeader("Referer");
             String cookieHeader = request.getHeader("Cookie");
 
-            log.debug("Incoming request: method={} uri={} origin={} referer={} cookieHeader={}",
+            log.debug("Incoming request: method={} uri={} origin={} referer={} cookies={}",
                     method, uri, origin, referer, cookieHeader);
 
-            Cookie[] cookies = request.getCookies();
-            if (cookies != null && cookies.length > 0) {
-                for (Cookie c : cookies) {
+            if (request.getCookies() != null) {
+                for (Cookie c : request.getCookies()) {
                     log.debug("Cookie present: name={} value={}", c.getName(), c.getValue());
                 }
             } else {
                 log.debug("No cookies present on request");
             }
 
+            
+            // Log CSRF attribute if present
             Object csrfAttr = request.getAttribute("_csrf");
             if (csrfAttr != null) {
-                log.debug("_csrf request attribute present: {}", csrfAttr);
+                log.debug("_csrf attribute present: {}", csrfAttr);
             } else {
-                log.debug("_csrf request attribute not present");
+                log.debug("_csrf attribute not present");
             }
 
             if (method.matches("POST|PUT|DELETE")) {
@@ -180,36 +176,4 @@ public OncePerRequestFilter originCheckFilterWithLogging() {
             }
         };
     }
-
- @Bean
-public OncePerRequestFilter csrfPostCheckLogger() {
-    Logger log = LoggerFactory.getLogger("CsrfPostCheckLogger");
-    return new OncePerRequestFilter() {
-        @Override
-        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-                throws ServletException, IOException {
-            // let CsrfFilter run first
-            filterChain.doFilter(request, response);
-
-            Object csrfAttr = request.getAttribute("_csrf");
-            if (csrfAttr == null) {
-                log.debug("_csrf attribute is null after CsrfFilter");
-                return;
-            }
-
-            log.debug("_csrf attribute after CsrfFilter: {}", csrfAttr.getClass().getName());
-            try {
-                org.springframework.security.web.csrf.CsrfToken token =
-                        (org.springframework.security.web.csrf.CsrfToken) csrfAttr;
-                log.debug("CsrfToken token={} headerName={} parameterName={}",
-                        token.getToken(), token.getHeaderName(), token.getParameterName());
-            } catch (ClassCastException e) {
-                log.debug("Csrf attribute present but not CsrfToken: {}", csrfAttr);
-            }
-
-            log.debug("Request header X-XSRF-TOKEN={}", request.getHeader("X-XSRF-TOKEN"));
-            log.debug("Request header Cookie={}", request.getHeader("Cookie"));
-        }
-    };
-}
 }
