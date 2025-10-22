@@ -122,8 +122,8 @@ public OncePerRequestFilter originCheckFilterWithLogging() {
             }
 
             if (method.matches("POST|PUT|DELETE")) {
-                boolean originInvalid = origin != null && !origin.equals("http://localhost:8100");
-                boolean refererInvalid = referer != null && !referer.startsWith("http://localhost:8100");
+                boolean originInvalid = origin != null && !origin.equals("http://localhost:5173");
+                boolean refererInvalid = referer != null && !referer.startsWith("http://localhost:5173");
 
                 if (originInvalid || refererInvalid) {
                     log.warn("Rejecting request due to origin/referer check: origin={} referer={}", origin, referer);
@@ -143,7 +143,7 @@ public OncePerRequestFilter originCheckFilterWithLogging() {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Collections.singletonList("http://localhost:8100"));
+        configuration.setAllowedOrigins(Collections.singletonList("http://localhost:5173"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("X-XSRF-TOKEN", "Content-Type", "Authorization"));
         configuration.setExposedHeaders(Collections.singletonList("X-XSRF-TOKEN"));
@@ -165,8 +165,8 @@ public OncePerRequestFilter originCheckFilterWithLogging() {
                 String referer = request.getHeader("Referer");
 
                 if (request.getMethod().matches("POST|PUT|DELETE")) {
-                    if ((origin != null && !origin.equals("http://localhost:8100")) ||
-                        (referer != null && !referer.startsWith("http://localhost:8100"))) {
+                    if ((origin != null && !origin.equals("http://localhost:5173")) ||
+                        (referer != null && !referer.startsWith("http://localhost:5173"))) {
                         response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid origin");
                         return;
                     }
