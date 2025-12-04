@@ -1,25 +1,26 @@
 package app.config;
 
+import app.security.CustomUserDetailsService;
+import app.security.JsonUsernamePasswordAuthFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.csrf.CsrfFilter;
-
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;    
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-import jakarta.servlet.http.Cookie;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -31,120 +32,80 @@ import java.util.Collections;
 
 @Configuration
 public class SecurityConfig {
-    
-    
-     @Value("${app.security.allowed-origin}")
+
+    @Value("${app.security.allowed-origin}")
     private String ORIGIN;
 
-@Bean
-public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-    // CSRF token repo with cookie readable by JS (for SPA)
-    CookieCsrfTokenRepository tokenRepository = new CookieCsrfTokenRepository();
-    tokenRepository.setCookieCustomizer(cookie -> cookie
-        .httpOnly(false)    // allow JS to read XSRF cookie
-        .secure(true)       // only send over HTTPS in prod
-        .sameSite("Strict") // tighten cross-site leakage; relax to Lax if needed
-        .path("/")          // scope
-    );
+    private final CustomUserDetailsService userDetailsService;
 
-    CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
-    requestHandler.setCsrfRequestAttributeName("_csrf");
+    public SecurityConfig(CustomUserDetailsService uds) {
+        this.userDetailsService = uds;
+    }
 
-    RequestMatcher csrfIgnore = request -> {
-        if (!"POST".equalsIgnoreCase(request.getMethod())) {
-            return false;
-        }
-        String uri = request.getRequestURI(); // includes context path trimmed by container
-        return "/api/csrf".equals(uri);
-    };
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-    http
-        .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-        .csrf(csrf -> csrf
-            .csrfTokenRepository(tokenRepository)
-            .csrfTokenRequestHandler(requestHandler)
-            .ignoringRequestMatchers(csrfIgnore)
-        )
-        .authorizeHttpRequests(auth -> auth
-            .requestMatchers(
-                "/",
-                "/index.html", 
-                "/static/**",
-                "/assets/**",
-                "/*.js",
-                "/*.css",
-                "/*.json",
-                "/*.png",
-                "/*.jpg",
-                "/*.jpeg",
-                "/*.gif",
-                "/*.svg",
-                "/*.ico",
-                "/favicon.ico",
-                "/error"
-            ).permitAll()
-            .requestMatchers("/api/**").permitAll()
-             // everything else should also be allowed so React routes work
-            .anyRequest().permitAll()
-        )
-        .addFilterBefore(originCheckFilter(), CsrfFilter.class);
+    @Bean
+    public DaoAuthenticationProvider authProvider() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
+        return provider;
+    }
 
-    return http.build();
-}
-    
-  
-// Replace originCheckFilter() with this logging version (or add a second bean)
-@Bean
-public OncePerRequestFilter originCheckFilterWithLogging() {
-    Logger log = LoggerFactory.getLogger("OriginCheckFilter");
-    return new OncePerRequestFilter() {
-        @Override
-        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-                throws ServletException, IOException {
-            String method = request.getMethod();
-            String uri = request.getRequestURI();
-            String origin = request.getHeader("Origin");
-            String referer = request.getHeader("Referer");
-            String cookieHeader = request.getHeader("Cookie");
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
 
-            log.debug("Incoming request: method={} uri={} origin={} referer={} cookies={}",
-                    method, uri, origin, referer, cookieHeader);
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authManager) throws Exception {
+        CookieCsrfTokenRepository tokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        tokenRepository.setCookieCustomizer(cookie -> cookie
+            .httpOnly(false)
+            .secure(true)
+            .sameSite("Strict")
+            .path("/")
+        );
 
-            if (request.getCookies() != null) {
-                for (Cookie c : request.getCookies()) {
-                    log.debug("Cookie present: name={} value={}", c.getName(), c.getValue());
-                }
-            } else {
-                log.debug("No cookies present on request");
+        CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
+        requestHandler.setCsrfRequestAttributeName("_csrf");
+
+        RequestMatcher csrfIgnore = request -> {
+            if (!"POST".equalsIgnoreCase(request.getMethod())) {
+                return false;
             }
+            return "/api/csrf".equals(request.getRequestURI());
+        };
 
-            
-            // Log CSRF attribute if present
-            Object csrfAttr = request.getAttribute("_csrf");
-            if (csrfAttr != null) {
-                log.debug("_csrf attribute present: {}", csrfAttr);
-            } else {
-                log.debug("_csrf attribute not present");
-            }
+        http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .csrf(csrf -> csrf
+                .csrfTokenRepository(tokenRepository)
+                .csrfTokenRequestHandler(requestHandler)
+                .ignoringRequestMatchers(csrfIgnore)
+            )
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    "/", "/index.html", "/static/**", "/assets/**",
+                    "/*.js", "/*.css", "/*.json", "/*.png", "/*.jpg",
+                    "/*.jpeg", "/*.gif", "/*.svg", "/*.ico",
+                    "/favicon.ico", "/error",
+                    "/api/auth/register",
+                    "/api/auth/login"
+                ).permitAll()
+                .anyRequest().authenticated()
+            )
+            .authenticationProvider(authProvider())
+            // Add JSON login filter at /login
+            .addFilterAt(new JsonUsernamePasswordAuthFilter("/login", authManager),
+                         UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(originCheckFilter(), CsrfFilter.class);
 
-            if (method.matches("POST|PUT|DELETE")) {
-                boolean originInvalid = origin != null && !origin.equals(ORIGIN);
-                boolean refererInvalid = referer != null && !referer.startsWith(ORIGIN);
-
-                if (originInvalid || refererInvalid) {
-                    log.warn("Rejecting request due to origin/referer check: origin={} referer={}", origin, referer);
-                    response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid origin");
-                    return;
-                } else {
-                    log.debug("Origin/referer check passed (or headers missing but allowed).");
-                }
-            }
-
-            filterChain.doFilter(request, response);
-        }
-    };
-}
-
+        return http.build();
+    }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

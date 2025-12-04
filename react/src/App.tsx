@@ -3,6 +3,7 @@ import Home from "./pages/Home";
 import About from "./pages/About";
 import Login from "./pages/Login";
 import ApiDemo from "./pages/ApiDemo";
+import Register from "./pages/Register";
 
 const navLinkStyle: React.CSSProperties = {
   textDecoration: "none",
@@ -40,6 +41,16 @@ export default function App() {
                 Login
               </Link>
             </li>
+            <li>
+              <Link
+                to="/register"
+                style={navLinkStyle}
+                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = navLinkHoverStyle.backgroundColor)}
+                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "")}
+              >
+                Register
+              </Link>
+          </li>
           </ul>
         </nav>
 
@@ -48,6 +59,7 @@ export default function App() {
           <Route path="/about" element={<About />} />
           <Route path="/demo" element={<ApiDemo />} /> 
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
         </Routes>
       </div>
     </Router>
