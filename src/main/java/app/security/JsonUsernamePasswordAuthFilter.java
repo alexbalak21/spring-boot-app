@@ -37,15 +37,22 @@ public class JsonUsernamePasswordAuthFilter extends AbstractAuthenticationProces
     }
 
     @Override
-    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response,
-                                            FilterChain chain, Authentication authResult)
+    protected void successfulAuthentication(HttpServletRequest request,
+                                            HttpServletResponse response,
+                                            FilterChain chain,
+                                            Authentication authResult)
             throws IOException, ServletException {
+        // ✅ Let Spring Security handle session creation and SecurityContext
+        super.successfulAuthentication(request, response, chain, authResult);
+
+        // ✅ Then write your custom JSON response
         response.setContentType("application/json");
         response.getWriter().write("{\"status\":\"success\",\"user\":\"" + authResult.getName() + "\"}");
     }
 
     @Override
-    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response,
+    protected void unsuccessfulAuthentication(HttpServletRequest request,
+                                              HttpServletResponse response,
                                               AuthenticationException failed)
             throws IOException, ServletException {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
