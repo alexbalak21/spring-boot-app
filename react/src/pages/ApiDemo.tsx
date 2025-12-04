@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
+import styles from "./ApiDemo.module.css";
 
 // Axios defaults for XSRF and cookies
 axios.defaults.withCredentials = true;
@@ -13,7 +14,6 @@ export default function ApiDemo() {
   const [responseText, setResponseText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Fetch CSRF token once on mount
   useEffect(() => {
     axios.get(`${API_BASE}/csrf`).catch((err) => {
       console.error("Failed to fetch CSRF token", err);
@@ -33,7 +33,6 @@ export default function ApiDemo() {
       setResponseText(JSON.stringify(res.data, null, 2));
       setInput("");
     } catch (err: any) {
-      console.error("POST error", err);
       const serverMessage = err?.response?.data?.message || err.message || "Unknown error";
       setResponseText(`Error: ${serverMessage}`);
     } finally {
@@ -44,42 +43,24 @@ export default function ApiDemo() {
   return (
     <div>
       <h1>API Demo</h1>
-      <div style={{ marginBottom: "20px" }}>
+      <div className={styles.container}>
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Type a message..."
-          style={{ padding: "8px", marginRight: "10px", width: "300px" }}
+          className={styles.input}
         />
         <button
           onClick={handlePost}
           disabled={loading}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: loading ? "#ccc" : "#007bff",
-            color: "white",
-            border: "none",
-            borderRadius: "4px",
-            cursor: loading ? "not-allowed" : "pointer",
-          }}
+          className={`${styles.button} ${loading ? styles.buttonDisabled : ""}`}
         >
           {loading ? "Sending..." : "Send Message"}
         </button>
       </div>
       {responseText && (
-        <div
-          style={{
-            marginTop: "20px",
-            padding: "15px",
-            backgroundColor: "#f8f9fa",
-            borderRadius: "4px",
-            whiteSpace: "pre-wrap",
-            fontFamily: "monospace",
-            maxHeight: "300px",
-            overflow: "auto",
-          }}
-        >
+        <div className={styles.responseBox}>
           {responseText}
         </div>
       )}
