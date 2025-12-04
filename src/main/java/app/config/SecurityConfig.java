@@ -1,5 +1,6 @@
 package app.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -10,7 +11,7 @@ import org.springframework.security.web.csrf.CsrfFilter;
 
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.CorsConfigurationSource;    
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -30,6 +31,10 @@ import java.util.Collections;
 
 @Configuration
 public class SecurityConfig {
+    
+    
+     @Value("${app.security.allowed-origin}")
+    private String ORIGIN;
 
 @Bean
 public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -63,7 +68,7 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(
                 "/",
-                "/index.html",
+                "/index.html", 
                 "/static/**",
                 "/assets/**",
                 "/*.js",
@@ -79,7 +84,8 @@ public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Excepti
                 "/error"
             ).permitAll()
             .requestMatchers("/api/**").permitAll()
-            .anyRequest().authenticated()
+             // everything else should also be allowed so React routes work
+            .anyRequest().permitAll()
         )
         .addFilterBefore(originCheckFilter(), CsrfFilter.class);
 
@@ -122,8 +128,8 @@ public OncePerRequestFilter originCheckFilterWithLogging() {
             }
 
             if (method.matches("POST|PUT|DELETE")) {
-                boolean originInvalid = origin != null && !origin.equals("http://localhost:5173");
-                boolean refererInvalid = referer != null && !referer.startsWith("http://localhost:5173");
+                boolean originInvalid = origin != null && !origin.equals(ORIGIN);
+                boolean refererInvalid = referer != null && !referer.startsWith(ORIGIN);
 
                 if (originInvalid || refererInvalid) {
                     log.warn("Rejecting request due to origin/referer check: origin={} referer={}", origin, referer);
@@ -143,7 +149,7 @@ public OncePerRequestFilter originCheckFilterWithLogging() {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Collections.singletonList("http://localhost:5173"));
+        configuration.setAllowedOrigins(Collections.singletonList(ORIGIN));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("X-XSRF-TOKEN", "Content-Type", "Authorization"));
         configuration.setExposedHeaders(Collections.singletonList("X-XSRF-TOKEN"));
@@ -165,8 +171,8 @@ public OncePerRequestFilter originCheckFilterWithLogging() {
                 String referer = request.getHeader("Referer");
 
                 if (request.getMethod().matches("POST|PUT|DELETE")) {
-                    if ((origin != null && !origin.equals("http://localhost:5173")) ||
-                        (referer != null && !referer.startsWith("http://localhost:5173"))) {
+                    if ((origin != null && !origin.equals(ORIGIN)) ||
+                        (referer != null && !referer.startsWith(ORIGIN))) {
                         response.sendError(HttpServletResponse.SC_FORBIDDEN, "Invalid origin");
                         return;
                     }
