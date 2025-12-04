@@ -37,6 +37,20 @@ public class SecurityConfig {
     @Value("${app.security.allowed-origin}")
     private String ORIGIN;
 
+    private static final String[] PUBLIC_ENDPOINTS = {
+    "/", "/index.html", "/static/**", "/assets/**",
+    "/*.js", "/*.css", "/*.json", "/*.png", "/*.jpg",
+    "/*.jpeg", "/*.gif", "/*.svg", "/*.ico",
+    "/favicon.ico", "/error",
+    "/api/auth/register",
+    "/api/auth/login",
+    "/api/csrf",
+    "/about",
+    "/demo",
+    "/login",
+    "/register"
+};
+
     private final CustomUserDetailsService userDetailsService;
 
     public SecurityConfig(CustomUserDetailsService uds) {
@@ -94,15 +108,7 @@ public class SecurityConfig {
                 .ignoringRequestMatchers(csrfIgnore)
             )
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(
-                    "/", "/index.html", "/static/**", "/assets/**",
-                    "/*.js", "/*.css", "/*.json", "/*.png", "/*.jpg",
-                    "/*.jpeg", "/*.gif", "/*.svg", "/*.ico",
-                    "/favicon.ico", "/error",
-                    "/api/auth/register",
-                    "/api/auth/login",
-                    "/api/csrf" // allow CSRF token fetch
-                ).permitAll()
+                .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authProvider())
