@@ -1,22 +1,31 @@
 package app.controller;
 
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestMapping;
-import jakarta.servlet.http.HttpServletResponse;
 
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-    
 
     @PostMapping("/login")
-    public String login(@RequestBody String request, HttpServletResponse response) {
-        //TODO: process POST request
-        response.setContentType("application/json");
-        return "{\"message\": \"Login successful\"}";
+    public ResponseEntity<Map<String, String>> login(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String password = request.get("password");
+
+        if ("user".equals(username) && "pass".equals(password)) {
+            // Return 200 OK with JSON
+            return ResponseEntity.ok(Map.of("message", "Login successful"));
+        } else {
+            // Return 401 Unauthorized with JSON
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid credentials"));
+        }
     }
-    
 }

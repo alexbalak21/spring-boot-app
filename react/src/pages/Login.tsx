@@ -1,15 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 import styles from "./Login.module.css";
+import { useCsrf } from "../hooks/useCsrf"; // adjust path
 
-// Constant for login endpoint
 const LOGIN_URL = "/api/auth/login";
-
-// Axios defaults for XSRF and cookies (same as ApiDemo)
-axios.defaults.withCredentials = true;
-axios.defaults.xsrfCookieName = "XSRF-TOKEN";
-axios.defaults.xsrfHeaderName = "X-XSRF-TOKEN";
 
 interface LoginFormData {
   username: string;
@@ -17,37 +11,25 @@ interface LoginFormData {
 }
 
 export default function Login() {
-  const navigate = useNavigate();
+  const csrfReady = useCsrf();
+
   const [formData, setFormData] = useState<LoginFormData>({
     username: "",
     password: "",
   });
   const [error, setError] = useState<string | null>(null);
+  const [loginResult, setLoginResult] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [csrfReady, setCsrfReady] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Fetch CSRF token once on mount (like ApiDemo)
-useEffect(() => {
-  const fetchCsrfToken = async () => {
-    try {
-      const res = await axios.get("/api/csrf");
-      console.log("✅ CSRF token response:", res);
-      setCsrfReady(true);
-    } catch (err) {
-      console.error("Failed to fetch CSRF token", err);
-    }
-  };
-  fetchCsrfToken();
-}, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setLoginResult(null);
 
     if (!formData.username.trim() || !formData.password) {
       setError("Please enter both username and password");
@@ -64,8 +46,8 @@ useEffect(() => {
         },
       });
 
+      setLoginResult(response.data?.message || "Login successful");
       console.log("Login successful:", response.data);
-      navigate("/"); // redirect after login
     } catch (err: any) {
       const errorMessage =
         err.response?.data?.message ||
@@ -83,6 +65,7 @@ useEffect(() => {
         <h2 className={styles.title}>Login</h2>
 
         {error && <div className={styles.error}>{error}</div>}
+        {loginResult && <div className={styles.success}>{loginResult}</div>}
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.formGroup}>
@@ -120,7 +103,7 @@ useEffect(() => {
           <button
             type="submit"
             className={`${styles.button} ${isLoading ? styles.buttonLoading : ""}`}
-            disabled={isLoading || !csrfReady} // block until CSRF ready
+            disabled={isLoading || !csrfReady}
           >
             {isLoading ? "Logging in..." : "Login"}
           </button>

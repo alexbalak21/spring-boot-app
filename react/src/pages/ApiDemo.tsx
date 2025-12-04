@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import styles from "./ApiDemo.module.css";
+import { useCsrf } from "../hooks/useCsrf"; // adjust path to your hook
 
 // Axios defaults for XSRF and cookies
 axios.defaults.withCredentials = true;
@@ -14,11 +15,8 @@ export default function ApiDemo() {
   const [responseText, setResponseText] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    axios.get(`${API_BASE}/csrf`).catch((err) => {
-      console.error("Failed to fetch CSRF token", err);
-    });
-  }, []);
+  // ✅ use the custom hook
+  const csrfReady = useCsrf();
 
   const handlePost = async () => {
     if (!input.trim()) {
@@ -33,7 +31,8 @@ export default function ApiDemo() {
       setResponseText(JSON.stringify(res.data, null, 2));
       setInput("");
     } catch (err: any) {
-      const serverMessage = err?.response?.data?.message || err.message || "Unknown error";
+      const serverMessage =
+        err?.response?.data?.message || err.message || "Unknown error";
       setResponseText(`Error: ${serverMessage}`);
     } finally {
       setLoading(false);
@@ -53,7 +52,7 @@ export default function ApiDemo() {
         />
         <button
           onClick={handlePost}
-          disabled={loading}
+          disabled={loading || !csrfReady} // ✅ block until CSRF ready
           className={`${styles.button} ${loading ? styles.buttonDisabled : ""}`}
         >
           {loading ? "Sending..." : "Send Message"}
