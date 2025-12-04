@@ -29,6 +29,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 @Configuration
 public class SecurityConfig {
@@ -63,11 +64,16 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authManager) throws Exception {
         CookieCsrfTokenRepository tokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        // ✅ For local dev: allow cookies over HTTP and cross‑origin requests
         tokenRepository.setCookieCustomizer(cookie -> cookie
             .httpOnly(false)
-            .secure(true)
-            .sameSite("Strict")
+            .secure(false)       // must be false on http://localhost
+            .sameSite("Lax")     // Lax allows cookies on XHR from your frontend
             .path("/")
+            // .httpOnly(false)
+            // .secure(true)
+            // .sameSite("Strict")
+            // .path("/")
         );
 
         CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
@@ -94,13 +100,13 @@ public class SecurityConfig {
                     "/*.jpeg", "/*.gif", "/*.svg", "/*.ico",
                     "/favicon.ico", "/error",
                     "/api/auth/register",
-                    "/api/auth/login"
+                    "/api/auth/login",
+                    "/api/csrf" // allow CSRF token fetch
                 ).permitAll()
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authProvider())
-            // Add JSON login filter at /login
-            .addFilterAt(new JsonUsernamePasswordAuthFilter("/login", authManager),
+            .addFilterAt(new JsonUsernamePasswordAuthFilter("/api/auth/login", authManager),
                          UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(originCheckFilter(), CsrfFilter.class);
 
@@ -110,11 +116,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(Collections.singletonList(ORIGIN));
+        configuration.setAllowedOrigins(List.of(ORIGIN)); // e.g. http://localhost:5173
+        configuration.setAllowCredentials(true); // critical for cookies
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
-        configuration.setAllowedHeaders(Arrays.asList("X-XSRF-TOKEN", "Content-Type", "Authorization"));
+        configuration.setAllowedHeaders(Arrays.asList(
+            "Authorization",
+            "Cache-Control",
+            "Content-Type",
+            "X-XSRF-TOKEN",
+            "X-Requested-With"
+        ));
         configuration.setExposedHeaders(Collections.singletonList("X-XSRF-TOKEN"));
-        configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
