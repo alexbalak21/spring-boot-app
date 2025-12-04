@@ -12,6 +12,7 @@ export function useCsrf() {
   useEffect(() => {
     const fetchCsrfToken = async () => {
       try {
+        console.log("Cookie:", document.cookie); // For debugging
         setCsrfReady(true);
       } catch (err) {
         console.error("Failed to fetch CSRF token", err);
