@@ -5,9 +5,14 @@ import app.model.UserRole;
 import app.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -16,17 +21,42 @@ public class AuthController {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
 
-    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthController(UserRepository userRepository,
+                          PasswordEncoder passwordEncoder,
+                          AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.authenticationManager = authenticationManager;
     }
 
     @PostMapping("/login")
     public ResponseEntity<Map<String, String>> login(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         String password = request.get("password");
-        return ResponseEntity.ok(Map.of("message", "Login successful", "user", email));
+
+        if (email == null || password == null) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "Email and password are required"));
+        }
+
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, password)
+            );
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Login successful");
+            response.put("user", authentication.getName());
+
+            return ResponseEntity.ok(response);
+        } catch (AuthenticationException ex) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid credentials"));
+        }
     }
 
     @PostMapping("/register")
@@ -34,6 +64,12 @@ public class AuthController {
         String name = request.get("name");
         String email = request.get("email");
         String rawPassword = request.get("password");
+
+        if (email == null || rawPassword == null || name == null) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "Name, email and password are required"));
+        }
 
         if (userRepository.findByEmail(email).isPresent()) {
             return ResponseEntity
@@ -49,8 +85,10 @@ public class AuthController {
 
         userRepository.save(user);
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(Map.of("message", "User registered successfully", "email", email));
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "User registered successfully");
+        response.put("email", email);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }

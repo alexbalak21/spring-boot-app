@@ -6,7 +6,7 @@ import { useCsrf } from "../hooks/useCsrf"; // adjust path
 const LOGIN_URL = "/api/auth/login";
 
 interface LoginFormData {
-  username: string;
+  email: string;
   password: string;
 }
 
@@ -14,7 +14,7 @@ export default function Login() {
   const csrfReady = useCsrf();
 
   const [formData, setFormData] = useState<LoginFormData>({
-    username: "",
+    email: "",
     password: "",
   });
   const [error, setError] = useState<string | null>(null);
@@ -31,8 +31,8 @@ export default function Login() {
     setError(null);
     setLoginResult(null);
 
-    if (!formData.username.trim() || !formData.password) {
-      setError("Please enter both username and password");
+    if (!formData.email.trim() || !formData.password) {
+      setError("Please enter both email and password");
       return;
     }
 
@@ -44,6 +44,7 @@ export default function Login() {
           "Content-Type": "application/json",
           "X-Requested-With": "XMLHttpRequest",
         },
+        withCredentials: true, // ensure cookies (JSESSIONID, CSRF) are kept
       });
 
       setLoginResult(response.data?.message || "Login successful");
@@ -69,18 +70,18 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.formGroup}>
-            <label htmlFor="username" className={styles.label}>
-              Username
+            <label htmlFor="email" className={styles.label}>
+              Email
             </label>
             <input
-              type="text"
-              id="username"
-              name="username"
-              value={formData.username}
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
               onChange={handleChange}
               className={styles.input}
               disabled={isLoading}
-              autoComplete="username"
+              autoComplete="email"
             />
           </div>
 
