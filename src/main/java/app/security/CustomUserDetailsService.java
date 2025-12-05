@@ -2,27 +2,26 @@ package app.security;
 
 import app.model.User;
 import app.repository.UserRepository;
-import org.springframework.security.core.userdetails.*;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
-    private final UserRepository repo;
+    private final UserRepository userRepository;
 
     public CustomUserDetailsService(UserRepository repo) {
-        this.repo = repo;
+        this.userRepository = repo;
     }
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        User user = repo.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
-        return org.springframework.security.core.userdetails.User
-                .withUsername(user.getEmail()) // use email as principal
-                .password(user.getPassword())
-                .roles(user.getRole()) // assuming UserRole is an enum
-                .build();
+        // ✅ Return your CustomUserDetails, not Spring’s User
+        return new CustomUserDetails(user);
     }
 }
