@@ -5,6 +5,9 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -16,6 +19,7 @@ import java.util.Map;
 
 public class JsonUsernamePasswordAuthFilter extends AbstractAuthenticationProcessingFilter {
 
+    private static final Logger logger = LoggerFactory.getLogger(JsonUsernamePasswordAuthFilter.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public JsonUsernamePasswordAuthFilter(String defaultFilterProcessesUrl, AuthenticationManager authManager) {
@@ -45,9 +49,18 @@ public class JsonUsernamePasswordAuthFilter extends AbstractAuthenticationProces
         // ✅ Let Spring Security handle session creation and SecurityContext
         super.successfulAuthentication(request, response, chain, authResult);
 
-        // ✅ Then write your custom JSON response
+        // 🔎 Log session details
+        HttpSession session = request.getSession(false);
+        if (session != null) {
+            logger.info("Session created for user {} with ID {}", authResult.getName(), session.getId());
+        } else {
+            logger.warn("No session found after successful authentication for user {}", authResult.getName());
+        }
+
+        // ✅ Write custom JSON response
         response.setContentType("application/json");
         response.getWriter().write("{\"status\":\"success\",\"user\":\"" + authResult.getName() + "\"}");
+        response.getWriter().flush(); // flush but don’t close, so Set-Cookie header is preserved
     }
 
     @Override
@@ -58,5 +71,6 @@ public class JsonUsernamePasswordAuthFilter extends AbstractAuthenticationProces
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType("application/json");
         response.getWriter().write("{\"status\":\"error\",\"message\":\"Invalid credentials\"}");
+        response.getWriter().flush();
     }
 }

@@ -2,6 +2,8 @@ package app.config;
 
 import app.security.CustomUserDetailsService;
 import app.security.JsonUsernamePasswordAuthFilter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,6 +13,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -26,6 +29,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -38,19 +42,18 @@ public class SecurityConfig {
     private String ORIGIN;
 
     private static final String[] PUBLIC_ENDPOINTS = {
-    "/", "/index.html", "/static/**", "/assets/**",
-    "/*.js", "/*.css", "/*.json", "/*.png", "/*.jpg",
-    "/*.jpeg", "/*.gif", "/*.svg", "/*.ico",
-    "/favicon.ico", "/error",
-    "/api/auth/register",
-    "/api/auth/login",
-    "/api/csrf",
-    "/about",
-    "/demo",
-    "/login",
-    "/register",
-    "/api/demo"
-};
+        "/", "/index.html", "/static/**", "/assets/**",
+        "/*.js", "/*.css", "/*.json", "/*.png", "/*.jpg",
+        "/*.jpeg", "/*.gif", "/*.svg", "/*.ico",
+        "/favicon.ico", "/error",
+        "/api/auth/register",
+        "/api/csrf",
+        "/about",
+        "/demo",
+        "/login",
+        "/register",
+        "/api/demo"
+    };
 
     private final CustomUserDetailsService userDetailsService;
 
@@ -79,16 +82,11 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationManager authManager) throws Exception {
         CookieCsrfTokenRepository tokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
-        // ✅ For local dev: allow cookies over HTTP and cross‑origin requests
         tokenRepository.setCookieCustomizer(cookie -> cookie
             .httpOnly(false)
-            .secure(false)       // must be false on http://localhost
-            .sameSite("Lax")     // Lax allows cookies on XHR from your frontend
+            .secure(false)   // must be false on http://localhost
+            .sameSite("Lax")
             .path("/")
-            // .httpOnly(false)
-            // .secure(true)
-            // .sameSite("Strict")
-            // .path("/")
         );
 
         CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
@@ -101,6 +99,27 @@ public class SecurityConfig {
             return "/api/csrf".equals(request.getRequestURI());
         };
 
+        // Build JSON login filter with explicit handlers
+        Logger logger = LoggerFactory.getLogger(JsonUsernamePasswordAuthFilter.class);
+        JsonUsernamePasswordAuthFilter jsonFilter =
+            new JsonUsernamePasswordAuthFilter("/api/auth/login", authManager);
+
+        jsonFilter.setAuthenticationSuccessHandler((request, response, authentication) -> {
+            HttpSession session = request.getSession(true); // force session creation
+            logger.info("Session created for user {} with ID {}", authentication.getName(), session.getId());
+            response.setStatus(HttpServletResponse.SC_OK);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"status\":\"success\",\"user\":\"" + authentication.getName() + "\"}");
+            response.getWriter().flush();
+        });
+
+        jsonFilter.setAuthenticationFailureHandler((request, response, exception) -> {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json");
+            response.getWriter().write("{\"status\":\"error\",\"message\":\"Invalid credentials\"}");
+            response.getWriter().flush();
+        });
+
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf
@@ -112,9 +131,13 @@ public class SecurityConfig {
                 .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                 .anyRequest().authenticated()
             )
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
+            )
             .authenticationProvider(authProvider())
-            .addFilterAt(new JsonUsernamePasswordAuthFilter("/api/auth/login", authManager),
-                         UsernamePasswordAuthenticationFilter.class)
+            .formLogin(form -> form.disable())
+            .logout(logout -> logout.disable())
+            .addFilterAt(jsonFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(originCheckFilter(), CsrfFilter.class);
 
         return http.build();
