@@ -19,7 +19,7 @@ public class ApiController {
         return "{\"message\": \"Hello from Spring Boot\"}";
     }
 
-    @PostMapping
+    @PostMapping("/demo")
     public String postMethodName(@RequestBody String entity, HttpServletResponse response) {
         response.setContentType("application/json");
         return entity;

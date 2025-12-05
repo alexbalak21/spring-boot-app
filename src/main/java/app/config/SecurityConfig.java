@@ -48,7 +48,8 @@ public class SecurityConfig {
     "/about",
     "/demo",
     "/login",
-    "/register"
+    "/register",
+    "/api/demo"
 };
 
     private final CustomUserDetailsService userDetailsService;
